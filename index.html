@@ -9,7 +9,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        :root {
+           :root {
             --uber-black: #000000;
             --uber-white: #FFFFFF;
             --uber-gray: #2C2C2C;
@@ -208,12 +208,12 @@
                 padding: 30px 20px;
             }
         }
-    </style>
+           </style>
 </head>
 <body>
     <div class="container">
         <div class="logo">
-            <h1> ALIBABA</h1>
+            <h1>ALIBABA</h1>
         </div>
 
         <div class="tab-buttons">
@@ -272,7 +272,7 @@
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+    import { getDatabase, ref, set, get, update, increment } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
     // Configuration Firebase 
     const firebaseConfig = {
@@ -297,12 +297,32 @@
     }
 
     async function checkReferralCode(code) {
-        if (!code) return null;
+        if (!code || code.trim() === '') return null;
+        
         try {
-            const snapshot = await get(ref(database, 'referralCodes/' + code));
-            return snapshot.exists() ? snapshot.val() : null;
+            // Normaliser le code (supprimer les espaces, mettre en majuscules)
+            const normalizedCode = code.trim().toUpperCase();
+            
+            // Recherche dans plusieurs chemins possibles
+            const paths = [
+                `referralCodes/${normalizedCode}`,
+                `users/${normalizedCode}`
+            ];
+            
+            for (const path of paths) {
+                const snapshot = await get(ref(database, path));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    // Vérifier que le code a un attribut userId ou est un code de parrainage valide
+                    if (data.userId || data.referralCode) {
+                        return data;
+                    }
+                }
+            }
+            
+            return null;
         } catch (error) {
-            console.error("Erreur de vérification du code:", error);
+            console.error("Erreur de vérification du code de parrainage:", error);
             return null;
         }
     }
@@ -349,11 +369,15 @@
             }
 
             let referrerData = null;
+            let bonusAmount = 0;
+
             if (referralCode) {
                 referrerData = await checkReferralCode(referralCode);
                 if (!referrerData) {
-                    throw new Error("Code de parrainage invalide");
+                    throw new Error("Code de parrainage invalide ou expiré");
                 }
+                // Optionnel : Bonus pour le parrain et le filleul
+                bonusAmount = 500; // Par exemple, 500 francs de bonus
             }
 
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -364,11 +388,26 @@
                 username,
                 email,
                 phoneNumber: telephone,
-                balance: 0,
+                balance: bonusAmount, // Montant initial avec bonus éventuel
                 referralCode: newReferralCode,
                 referredBy: referrerData?.userId || null,
                 createdAt: Date.now()
             });
+
+            // Stocker le code de parrainage
+            await set(ref(database, 'referralCodes/' + newReferralCode), {
+                userId: user.uid,
+                createdAt: Date.now(),
+                usageCount: 0
+            });
+
+            // Si un parrain existe, mettre à jour son solde
+            if (referrerData && referrerData.userId) {
+                const referrerRef = ref(database, `users/${referrerData.userId}`);
+                await update(referrerRef, {
+                    balance: increment(bonusAmount)
+                });
+            }
 
             successElement.textContent = "Compte créé avec succès !";
             
@@ -378,6 +417,7 @@
 
         } catch (error) {
             errorElement.textContent = error.message;
+            console.error("Erreur d'inscription :", error);
         }
     });
 
@@ -397,6 +437,7 @@
             window.location.href = "solde.html";
         } catch (error) {
             errorElement.textContent = "Numéro ou mot de passe incorrect";
+            console.error("Erreur de connexion :", error);
         }
     });
 

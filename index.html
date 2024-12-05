@@ -377,7 +377,7 @@
                     throw new Error("Code de parrainage invalide ou expiré");
                 }
                 // Optionnel : Bonus pour le parrain et le filleul
-                bonusAmount = 500; // Par exemple, 500 francs de bonus
+                bonusAmount = 0; // Par exemple, 0 francs de bonus
             }
 
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);

@@ -195,8 +195,8 @@
             const referrerRef = ref(database, 'users/' + referrerUid);
             const memberRef = ref(database, 'users/' + memberData.uid);
 
-            // Calculer le bonus (12% du solde du membre)
-            const bonusAmount = (memberData.balance || 0) * 0.12;
+            // Calculer le bonus (10% du solde du membre)
+            const bonusAmount = (memberData.balance || 0) * 0.10;
 
             if (bonusAmount > 0) {
                 // Mise à jour du solde du parrain
@@ -240,7 +240,7 @@
         document.getElementById('teamLevel').textContent = Math.floor(unclaimedMembers.length / 5) + 1;
         
         totalTeamBonus = unclaimedMembers.reduce((sum, member) => {
-            return sum + ((member.balance || 0) * 0.12);
+            return sum + ((member.balance || 0) * 0.10);
         }, 0);
 
         document.getElementById('totalBonus').textContent = 

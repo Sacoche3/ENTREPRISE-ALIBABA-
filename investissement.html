@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>achat des articles Alibaba </title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+        :root {
+            --primary-gradient: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+            --secondary-gradient: linear-gradient(135deg, #ff6a88 0%, #ff6a88 30%, #ff6 100%);
+            --text-color: #ffffff;
+            --background-color: #0f0c29;
+            --card-background: linear-gradient(160deg, #252537 0%, #1a1a2e 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: var(--primary-gradient);
+            color: white;
+            text-align: center;
+            padding: 3rem;
+            border-bottom-left-radius: 30px;
+            border-bottom-right-radius: 30px;
+            box-shadow: 0 15px 30px rgba(37, 37, 55, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            text-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 2;
+        }
+
+        #userBalance {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            margin-top: 15px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .investment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 30px 0;
+        }
+
+        .investment-card {
+            background: var(--card-background);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            transition: all 0.4s ease;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .investment-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+            transform: skew(0deg, -10deg);
+            transition: all 0.4s ease;
+            opacity: 0;
+        }
+
+        .investment-card:hover {
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .investment-card:hover::before {
+            opacity: 1;
+        }
+
+        .investment-card img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            filter: brightness(0.8) contrast(1.2);
+            transition: transform 0.4s ease;
+        }
+
+        .investment-card:hover img {
+            transform: scale(1.1);
+        }
+
+        .investment-details {
+            padding: 25px;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .invest-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--secondary-gradient);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .invest-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: all 0.4s ease;
+        }
+
+        .invest-btn:hover::before {
+            left: 100%;
+        }
+
+        .invest-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 14px rgba(0,0,0,0.2);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background: var(--card-background);
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            width: 80px;
+            height: 80px;
+            border: 8px solid rgba(255,255,255,0.1);
+            border-top: 8px solid #2575fc;
+            border-radius: 50%;
+            animation: spin 1.2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            z-index: 3000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s, transform 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .notification.success {
+            background: rgba(46, 204, 113, 0.8);
+        }
+
+        .notification.error {
+            background: rgba(231, 76, 60, 0.8);
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media screen and (max-width: 768px) {
+            .investment-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <div class="container">
+        <header class="header">
+            <h1>ALIBABA</h1>
+            <p>Achat des articles Alibaba disponible</p>
+            <div id="userBalance">Solde: 0 FCFA</div>
+        </header>
+
+        <div class="investment-grid" id="investmentGrid">
+            <!-- Les cartes d'investissement seront générées dynamiquement -->
+        </div>
+
+        <div id="investModal" class="modal">
+            <div class="modal-content">
+                <h2>Confirmer l'investissement</h2>
+                <p id="modalInvestmentDetails"></p>
+                <button id="confirmInvestBtn" class="invest-btn">Confirmer</button>
+                <button onclick="closeModal()" class="invest-btn" style="background: #e74c3c; margin-top: 10px;">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cryptoOptions = [
+            { 
+             
+                id: 0,
+                name:  'MONTRE', 
+                price: 1000, 
+                dailyReturn: 200, 
+                cycle: 20, 
+                totalReturn: 4000,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733364957-montre-homme-de-luxe-nouveau-afficher-le-calendrie.jpg'
+            },
+            { 
+                id: 1,
+                name: 'TONDEUSE', 
+                price: 5000, 
+                dailyReturn: 700,  
+                cycle: 29, 
+                totalReturn: 20300,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733365382-ensemble-3-tondeuse-a-cheveux-electrique-professio.jpg'
+            },
+         
+            { 
+                id: 3,
+                name: 'SAC', 
+                price: 12000, 
+                dailyReturn: 1400, 
+                cycle: 30, 
+                totalReturn: 42000,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733365653-18307036-54145403-1000.jpg'
+            },
+            { 
+                id: 4,
+                name: 'TELEPHONE IPHONE',
+                price: 25000,
+                dailyReturn: 2700,
+                cycle: 30,
+                totalReturn: 81000,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733365877-61pz7va6kol.jpg'
+            },
+            { 
+                id: 5,
+                name: 'CHARGEUR',
+                price: 50000,
+                dailyReturn: 6000,
+                cycle: 30,
+                totalReturn: 180000,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733366337-611bqfzwzul-ac-ul210-sr210-210.jpg'
+            },
+            { 
+                id: 6,
+                name: 'SAMSUNG',
+                price: 100000,
+                dailyReturn: 12000,
+                cycle: 25,
+                totalReturn: 300000,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733366629-662c231e727a943f06281782-pre-owned-samsung-galaxy-s21-5g-256gb.jpg'
+            },
+            { 
+                id: 7,
+                name: 'BRACELET',
+                price: 200000,
+                dailyReturn: 23000,
+                cycle: 25,
+                totalReturn: 575000,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733366778-89d7f809d5311e3fdf0d60ae0112dfd9f034f322-original.jpeg'
+            },
+            { 
+                id: 8,
+                name: 'MATELA',
+                price: 400000,
+                dailyReturn: 46000,
+                cycle: 20,
+                totalReturn: 920000,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733366914-lombardi.jpg'
+            },
+            { 
+                id: 9,
+                name: 'MACHINE A LAVE',
+                price: 980000,
+                dailyReturn: 110000,
+                cycle: 20,
+                totalReturn: 2200000,
+                image: 'https://image.noelshack.com/fichiers/2024/49/4/1733367133-1-12.jpg'
+            },
+            
+        ];
+
+        function renderInvestmentCards() {
+            const grid = document.getElementById('investmentGrid');
+            grid.innerHTML = ''; // Nettoyer la grille existante
+            
+            cryptoOptions.forEach((crypto) => {
+                const card = document.createElement('div');
+                card.classList.add('investment-card');
+                card.innerHTML = `
+                    <img src="${crypto.image}" alt="${crypto.name}">
+                    <div class="investment-details">
+                        <h3><i class="fas fa-coins"></i>${crypto.name}</h3>
+                        <div class="detail">
+                            <span>Prix</span>
+                            <strong>${crypto.price} FCFA</strong>
+                        </div>
+                        <div class="detail">
+                            <span>Revenus quotidien</span>
+                            <strong>${crypto.dailyReturn} FCFA</strong>
+                        </div>
+                        <div class="detail">
+                            <span>Cycle</span>
+                            <strong>${crypto.cycle} jours</strong>
+                        </div>
+                        <div class="detail">
+                            <span>Revenus total</span>
+                            <strong>${crypto.totalReturn} FCFA</strong>
+                        </div>
+                        <button onclick="openInvestModal(${crypto.id})" class="invest-btn">
+                            <i class="fas fa-rocket"></i> Investir
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        let selectedInvestment = null;
+
+        function openInvestModal(id) {
+            selectedInvestment = cryptoOptions.find(crypto => crypto.id === id);
+            const modal = document.getElementById('investModal');
+            const modalDetails = document.getElementById('modalInvestmentDetails');
+            modalDetails.innerHTML = `
+                Voulez-vous vraiment investir ${selectedInvestment.price} FCFA dans ${selectedInvestment.name} ?<br>
+                Revenus potentiels : ${selectedInvestment.totalReturn} FCFA sur ${selectedInvestment.cycle} jours
+            `;
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('investModal');
+            modal.style.display = 'none';
+        }
+
+        document.getElementById('confirmInvestBtn').addEventListener('click', () => {
+            if (selectedInvestment) {
+                invest(
+                    selectedInvestment.id,
+                    selectedInvestment.price,
+                    selectedInvestment.dailyReturn,
+                    selectedInvestment.cycle
+                );
+                closeModal();
+            }
+        });
+
+        // Initialisation
+        renderInvestmentCards();
+    </script>
+
+    <!-- Import des modules Firebase -->
+    <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
+    import { 
+        getAuth, 
+        onAuthStateChanged
+    } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js';
+    import { 
+        getDatabase, 
+        ref, 
+        onValue,
+        query,
+        orderByChild,
+        equalTo,
+        update,
+        get,
+        runTransaction
+    } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js';
+
+    // Configuration Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyCekNaQs88vn7Ed2IIO_fIrc3kk2lVfggM",
+        authDomain: "uber-10bff.firebaseapp.com",
+        databaseURL: "https://uber-10bff-default-rtdb.firebaseio.com",
+        projectId: "uber-10bff",
+        storageBucket: "uber-10bff.firebasestorage.app",
+        messagingSenderId: "997089945771",
+        appId: "1:997089945771:web:55496eb4fb702eabce2fee"
+    };
+
+        // Initialiser Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+
+        // Variables globales
+        let currentUser = null;
+        let userBalance = 0;
+        let userInvestments = {};
+
+        // Fonctions utilitaires
+        window.showLoading = function(show = true) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+
+        window.showNotification = function(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${isError ? 'error' :'success'}`;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        function updateUserInterface() {
+            document.getElementById('userBalance').textContent = `Solde: ${userBalance.toLocaleString()} FCFA`;
+        }
+
+        // Fonction d'investissement
+        window.invest = async function(productId, price, dailyRevenue, totalDays) {
+            if (!currentUser) {
+                showNotification("Veuillez vous connecter pour investir", true);
+                return;
+            }
+
+            try {
+                showLoading(true);
+
+                const currentInvestment = userInvestments[`product${productId}`] || { count: 0 };
+                if (currentInvestment.count >= 1) {
+                    showNotification("Vous avez déjà acheté ce produit", true);
+                    return;
+                }
+
+                if (userBalance < price) {
+                    showNotification("Solde insuffisant", true);
+                    return;
+                }
+
+                const newBalance = userBalance - price;
+                const investment = {
+                    productId: `product${productId}`,
+                    price,
+                    dailyRevenue,
+                    totalDays,
+                    startDate: Date.now(),
+                    count: (currentInvestment.count || 0) + 1,
+                    lastRevenueDate: Date.now()
+                };
+
+                const updates = {};
+                updates[`/users/${currentUser.uid}/balance`] = newBalance;
+                updates[`/users/${currentUser.uid}/investments/product${productId}`] = investment;
+                
+                await update(ref(database), updates);
+
+                userBalance = newBalance;
+                userInvestments[`product${productId}`] = investment;
+                updateUserInterface();
+                showNotification("Investissement réussi!");
+
+            } catch (error) {
+                console.error("Erreur lors de l'investissement:", error);
+                showNotification("Une erreur est survenue lors de l'investissement", true);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fonction pour créditer les revenus
+        async function creditDailyRevenue() {
+            if (!currentUser) return;
+
+            try {
+                const now = Date.now();
+                let totalRevenue = 0;
+
+                for (const [productId, investment] of Object.entries(userInvestments)) {
+                    const hoursSinceLastRevenue = (now - investment.lastRevenueDate) / (1000 * 60 * 60);
+                    
+                    if (hoursSinceLastRevenue >= 24) {
+                        const daysPassed = Math.floor((now - investment.startDate) / (1000 * 60 * 60 * 24));
+                        
+                        if (daysPassed <= investment.totalDays) {
+                            totalRevenue += investment.dailyRevenue;
+                            investment.lastRevenueDate = now;
+                            
+                            await set(ref(database, `users/${currentUser.uid}/investments/${productId}/lastRevenueDate`), now);
+                        }
+                    }
+                }
+
+                if (totalRevenue > 0) {
+                    userBalance += totalRevenue;
+                    await set(ref(database, `users/${currentUser.uid}/balance`), userBalance);
+                    updateUserInterface();
+                    showNotification(`Revenus crédités: ${totalRevenue} FCFA`);
+                }
+            } catch (error) {
+                console.error("Erreur lors du crédit des revenus:", error);
+            }
+        }
+
+        // Gestion de l'authentification
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            
+            if (user) {
+                try {
+                    showLoading(true);
+                    
+                    onValue(ref(database, `users/${user.uid}`), (snapshot) => {
+                        const userData = snapshot.val() || {};
+                        userBalance = userData.balance || 0;
+                        userInvestments = userData.investments || {};
+                        updateUserInterface();
+                    });
+
+                    setInterval(creditDailyRevenue, 60000); // Vérifier toutes les minutes
+                    creditDailyRevenue(); // Vérifier immédiatement
+
+                } catch (error) {
+                    console.error("Erreur lors du chargement des données:", error);
+                    showNotification("Erreur lors du chargement des données", true);
+                } finally {
+                    showLoading(false);
+                }
+            } else {
+                // Réinitialiser les données
+                userBalance = 0;
+                userInvestments = {};
+                updateUserInterface();
+            }
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            // Gérer les erreurs de chargement des images
+            const images = document.querySelectorAll('img');
+            images.forEach(img => {
+                img.onerror = function() {
+                    this.src = 'https://via.placeholder.com/100';
+                };
+            });
+        });
+    </script>
+    </body>
+    </html>

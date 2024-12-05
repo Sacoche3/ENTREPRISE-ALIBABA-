@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>CRÉE UN COMPTE ALIBABA</title>
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --uber-black: #000000;
+            --uber-white: #FFFFFF;
+            --uber-gray: #2C2C2C;
+            --uber-green: #00D66C;
+            --uber-green-hover: #00b359;
+            --uber-blue: #1da1f2;
+            --uber-gradient: linear-gradient(135deg, #000000 0%, #2C2C2C 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Uber Move', Arial, sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            background: var(--uber-black);
+            color: var(--uber-white);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+
+        .container {
+            background: var(--uber-gray);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 420px;
+            padding: 40px 30px;
+            box-shadow: 0 15px 25px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            transform: rotateX(10deg) scale(0.9);
+            opacity: 0;
+            animation: fadeInScale 0.6s forwards ease-out;
+        }
+
+        @keyframes fadeInScale {
+            to {
+                transform: rotateX(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, var(--uber-green), var(--uber-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 30px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px;
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            font-weight: bold;
+            position: relative;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .tab-button.active {
+            color: var(--uber-white);
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--uber-green);
+            transform: scaleX(1);
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px 15px 15px 50px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            color: var(--uber-white);
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: var(--uber-green);
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 214, 108, 0.3);
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--uber-green);
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+
+        .input-group input:focus + i {
+            color: var(--uber-blue);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--uber-green);
+            border: none;
+            color: var(--uber-black);
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            background: var(--uber-green-hover);
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 214, 108, 0.4);
+        }
+
+        .form-container form {
+            display: none;
+        }
+
+        .form-container form.active {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0; 
+                transform: translateX(50px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0); 
+            }
+        }
+
+        .error-message, .success-message {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .error-message {
+            color: #ff4d4d;
+        }
+
+        .success-message {
+            color: var(--uber-green);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                width: 95%;
+                margin: 0 10px;
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1> ALIBABA</h1>
+        </div>
+
+        <div class="tab-buttons">
+            <button class="tab-button active" data-form="login">Connexion</button>
+            <button class="tab-button" data-form="signup">Inscription</button>
+        </div>
+
+        <div class="form-container">
+            <!-- Formulaire de Connexion -->
+            <form id="loginFormData" class="active" data-type="login">
+                <div class="input-group">
+                    <i class="fas fa-phone"></i>
+                    <input type="tel" id="loginTelephone" placeholder="Numéro de téléphone" required />
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="loginPassword" placeholder="Mot de passe" required />
+                </div>
+                <p id="loginError" class="error-message"></p>
+                <button type="submit" class="submit-btn">
+                    Se connecter
+                </button>
+            </form>
+
+            <!-- Formulaire d'Inscription -->
+            <form id="signupFormData" data-type="signup">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="signupUsername" placeholder="Nom d'utilisateur" required />
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-phone"></i>
+                    <input type="tel" id="signupTelephone" placeholder="Numéro de téléphone" required />
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="signupPassword" placeholder="Mot de passe" required />
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="confirmPassword" placeholder="Confirmer le mot de passe" required />
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-ticket"></i>
+                    <input type="text" id="referralCode" placeholder="Code de parrainage (optionnel)" />
+                </div>
+                <p id="signupError" class="error-message"></p>
+                <p id="signupSuccess" class="success-message"></p>
+                <button type="submit" class="submit-btn">
+                    Créer un compte
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+
+    // Configuration Firebase 
+    const firebaseConfig = {
+        apiKey: "AIzaSyCekNaQs88vn7Ed2IIO_fIrc3kk2lVfggM",
+        authDomain: "uber-10bff.firebaseapp.com",
+        databaseURL: "https://uber-10bff-default-rtdb.firebaseio.com",
+        projectId: "uber-10bff",
+        storageBucket: "uber-10bff.firebasestorage.app",
+        messagingSenderId: "997089945771",
+        appId: "1:997089945771:web:55496eb4fb702eabce2fee"
+    };
+
+    // Initialisation Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const database = getDatabase(app);
+
+    // Fonctions utilitaires
+    function generateReferralCode() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        return Array.from({ length: 6 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+    }
+
+    async function checkReferralCode(code) {
+        if (!code) return null;
+        try {
+            const snapshot = await get(ref(database, 'referralCodes/' + code));
+            return snapshot.exists() ? snapshot.val() : null;
+        } catch (error) {
+            console.error("Erreur de vérification du code:", error);
+            return null;
+        }
+    }
+
+    // Gestion des onglets
+    document.addEventListener('DOMContentLoaded', () => {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const forms = document.querySelectorAll('.form-container form');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                forms.forEach(form => form.classList.remove('active'));
+
+                const formType = button.getAttribute('data-form');
+                const targetForm = document.querySelector(`form[data-type="${formType}"]`);
+                targetForm.classList.add('active');
+            });
+        });
+    });
+
+    // Gestion du formulaire d'inscription
+    document.getElementById("signupFormData").addEventListener("submit", async function(event) {
+        event.preventDefault();
+        
+        const errorElement = document.getElementById("signupError");
+        const successElement = document.getElementById("signupSuccess");
+        
+        errorElement.textContent = "";
+        successElement.textContent = "";
+
+        try {
+            const username = document.getElementById("signupUsername").value;
+            const telephone = document.getElementById("signupTelephone").value;
+            const email = `${telephone}@temp.com`;
+            const password = document.getElementById("signupPassword").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+            const referralCode = document.getElementById("referralCode").value;
+
+            if (password !== confirmPassword) {
+                throw new Error("Les mots de passe ne correspondent pas");
+            }
+
+            let referrerData = null;
+            if (referralCode) {
+                referrerData = await checkReferralCode(referralCode);
+                if (!referrerData) {
+                    throw new Error("Code de parrainage invalide");
+                }
+            }
+
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            const newReferralCode = generateReferralCode();
+            
+            await set(ref(database, 'users/' + user.uid), {
+                username,
+                email,
+                phoneNumber: telephone,
+                balance: 0,
+                referralCode: newReferralCode,
+                referredBy: referrerData?.userId || null,
+                createdAt: Date.now()
+            });
+
+            successElement.textContent = "Compte créé avec succès !";
+            
+            setTimeout(() => {
+                window.location.href = "solde.html";
+            }, 1500);
+
+        } catch (error) {
+            errorElement.textContent = error.message;
+        }
+    });
+
+    // Gestion du formulaire de connexion
+    document.getElementById("loginFormData").addEventListener("submit", async function(event) {
+        event.preventDefault();
+        
+        const errorElement = document.getElementById("loginError");
+        errorElement.textContent = "";
+
+        try {
+            const telephone = document.getElementById("loginTelephone").value;
+            const email = `${telephone}@temp.com`;
+            const password = document.getElementById("loginPassword").value;
+
+            await signInWithEmailAndPassword(auth, email, password);
+            window.location.href = "solde.html";
+        } catch (error) {
+            errorElement.textContent = "Numéro ou mot de passe incorrect";
+        }
+    });
+
+    // Gestion du code de parrainage dans l'URL
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const referralCode = urlParams.get('ref');
+        const referralCodeInput = document.getElementById('referralCode');
+        
+        if (referralCodeInput && referralCode) {
+            referralCodeInput.value = referralCode;
+        }
+    });
+    </script>
+</body>
+</html>

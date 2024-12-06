@@ -198,8 +198,8 @@
 
             <form id="rechargeForm">
                 <div class="form-group">
-                    <label>Montant à recharger (Minimum 1300 FCFA)</label>
-                    <input type="number" min="1300" class="input" id="amount" required placeholder="Entrez le montant">
+                    <label>Montant à recharger (Minimum 1600 FCFA)</label>
+                    <input type="number" min="1600" class="input" id="amount" required placeholder="Entrez le montant">
                     <div class="error-message" id="amountError"></div>
                 </div>
 
@@ -231,8 +231,8 @@
                 return;
             }
 
-            if (amount < 1300) {
-                amountError.textContent = 'Le montant minimum est de 1300 FCFA';
+            if (amount < 1600) {
+                amountError.textContent = 'Le montant minimum est de 1600 FCFA';
                 return;
             }
 

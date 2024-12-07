@@ -199,7 +199,7 @@
   <!-- Notification -->
   <div class="notification fixed top-4 right-4 p-4 rounded-lg text-white shadow-lg z-50 hidden" id="notification"></div>
 
-  <script type="module">
+<script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
     import { 
         getAuth, 
@@ -210,7 +210,7 @@
         ref, 
         onValue,
         update,
-        get
+        serverTimestamp
     } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js';
 
     // Configuration Firebase (identique à votre version précédente)
@@ -224,290 +224,210 @@
         appId: "1:997089945771:web:55496eb4fb702eabce2fee"
     };
 
-  // Initialiser Firebase
+    // Initialiser Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const database = getDatabase(app);
 
     // Variables globales
     let currentUser = null;
-    let checkRevenueInterval = null;
+    let revenueCheckInterval = null;
 
     const productData = {
-  product0: { 
-    name: 'MONTRE', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733364957-montre-homme-de-luxe-nouveau-afficher-le-calendrie.jpg' 
-  },
-  product1: { 
-    name: 'TONDEUSE', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733365382-ensemble-3-tondeuse-a-cheveux-electrique-professio.jpg' 
-  },
-  product3: { 
-    name: 'SAC', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733365653-18307036-54145403-1000.jpg' 
-  },
-  product4: { 
-    name: 'TELEPHONE IPHONE', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733365877-61pz7va6kol.jpg' 
-  },
-  product5: { 
-    name: 'CHARGEUR', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733366337-611bqfzwzul-ac-ul210-sr210-210.jpg' 
-  },
-  product6: { 
-    name: 'SAMSUNG', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733366629-662c231e727a943f06281782-pre-owned-samsung-galaxy-s21-5g-256gb.jpg' 
-  },
-  product7: { 
-    name: 'BRACELET', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733366778-89d7f809d5311e3fdf0d60ae0112dfd9f034f322-original.jpeg' 
-  },
-  product8: { 
-    name: 'MATELA', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733366914-lombardi.jpg' 
-  },
-  product9: { 
-    name: 'MACHINE A LAVE', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733367133-1-12.jpg' 
-  },
-  product10: { 
-    name: 'CHAUSURES', 
-    image: 'https://image.noelshack.com/fichiers/2024/49/4/1733367363-500-semerdjian-baskets-1-mcg-hossegor.jpg' 
-  }
-};
+        product0: { 
+            name: 'MONTRE', 
+            image: 'https://image.noelshack.com/fichiers/2024/49/4/1733364957-montre-homme-de-luxe-nouveau-afficher-le-calendrie.jpg' 
+        },
+        // ... (reste de vos produits)
+    };
 
     function showLoading(show = true) {
-      document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
     }
 
     function showNotification(message, isError = false) {
-      const notification = document.getElementById('notification');
-      notification.textContent = message;
-      notification.style.display = 'block';
-      notification.style.background = isError ? '#ef4444' : '#10b981';
-      setTimeout(() => {
-        notification.style.display = 'none';
-      }, 3000);
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.style.display = 'block';
+        notification.style.background = isError ? '#ef4444' : '#10b981';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 3000);
     }
 
     function formatDate(timestamp) {
-      return new Date(timestamp).toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
+        return new Date(timestamp).toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
     }
 
     function calculateProgress(startDate, totalDays) {
-      const now = Date.now();
-      const daysPassed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
-      return Math.min((daysPassed / totalDays) * 100, 100);
+        const now = Date.now();
+        const daysPassed = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+        return Math.min((daysPassed / totalDays) * 100, 100);
     }
 
     function calculateTotalEarned(investment) {
-      const daysPassed = Math.floor((Date.now() - investment.startDate) / (1000 * 60 * 60 * 24));
-      return Math.min(daysPassed, investment.totalDays) * investment.dailyRevenue;
+        const daysPassed = Math.floor((Date.now() - investment.startDate) / (1000 * 60 * 60 * 24));
+        return Math.min(daysPassed, investment.totalDays) * investment.dailyRevenue;
     }
 
     function updateLastUpdateTime() {
-      const lastUpdate = document.getElementById('lastUpdate');
-      lastUpdate.textContent = `Dernière mise à jour: ${new Date().toLocaleTimeString()}`;
+        const lastUpdate = document.getElementById('lastUpdate');
+        lastUpdate.textContent = `Dernière mise à jour: ${new Date().toLocaleTimeString()}`;
     }
 
     function updateUserInterface(userData) {
-      const container = document.getElementById('investmentsContainer');
-      container.innerHTML = '';
+        const container = document.getElementById('investmentsContainer');
+        container.innerHTML = '';
 
-      if (!userData || !userData.investments || Object.keys(userData.investments).length === 0) {
-        container.innerHTML = `
-          <div class="empty-state col-span-full">
-            <img src="/api/placeholder/200/200" alt="No investments">
-            <h2 class="text-2xl font-semibold text-gray-700 mt-6 mb-2">Aucun investissement</h2>
-            <p class="text-gray-500">Commencez à investir pour voir vos produits ici.</p>
-          </div>
+        if (!userData || !userData.investments || Object.keys(userData.investments).length === 0) {
+            container.innerHTML = `
+                <div class="empty-state col-span-full">
+                    <img src="/api/placeholder/200/200" alt="No investments">
+                    <h2 class="text-2xl font-semibold text-gray-700 mt-6 mb-2">Aucun investissement</h2>
+                    <p class="text-gray-500">Commencez à investir pour voir vos produits ici.</p>
+                </div>
+            `;
+            return;
+        }
+
+        Object.entries(userData.investments).forEach(([productId, investment]) => {
+            const product = productData[productId];
+            if (!product) return;
+
+            const progress = calculateProgress(investment.startDate, investment.totalDays);
+            const totalEarned = calculateTotalEarned(investment);
+            const remainingDays = Math.max(0, investment.totalDays - Math.floor((Date.now() - investment.startDate) / (1000 * 60 * 60 * 24)));
+
+            const card = document.createElement('div');
+            card.className = 'investment-card p-6';
+            card.innerHTML = `
+                <!-- Votre code de carte d'investissement existant -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="stat-card p-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm text-gray-500">Total gagné</h4>
+                            <i class="fas fa-piggy-bank text-green-400"></i>
+                        </div>
+                        <p class="text-lg font-semibold text-green-600 mt-1">+${totalEarned.toLocaleString()} FCFA</p>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(card);
+        });
+
+        document.getElementById('userBalance').innerHTML = `
+            ${userData.balance?.toLocaleString() || 0} FCFA
         `;
-        return;
-      }
-
-      Object.entries(userData.investments).forEach(([productId, investment]) => {
-        const product = productData[productId];
-        if (!product) return;
-
-        const progress = calculateProgress(investment.startDate, investment.totalDays);
-        const totalEarned = calculateTotalEarned(investment);
-        const remainingDays = Math.max(0, investment.totalDays - Math.floor((Date.now() - investment.startDate) / (1000 * 60 * 60 * 24)));
-
-        const card = document.createElement('div');
-        card.className = 'investment-card p-6';
-        card.innerHTML = `
-          <div class="flex items-center mb-6">
-            <div class="relative w-16 h-16 rounded-xl overflow-hidden">
-              <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover" onerror="this.src='/api/placeholder/64/64'">
-            </div>
-            <div class="ml-4 flex-1">
-              <div class="flex justify-between items-start">
-                <h3 class="text-xl font-semibold text-gray-800">${product.name}</h3>
-                <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
-                  ${investment.count} unité${investment.count > 1 ? 's' : ''}
-                </span>
-              </div>
-              <p class="text-sm text-gray-500 mt-1">
-                <i class="fas fa-calendar-alt mr-1"></i> 
-                ${formatDate(investment.startDate)}
-              </p>
-            </div>
-          </div>
-          
-          <div class="grid grid-cols-2 gap-4 mb-6">
-            <div class="stat-card p-4">
-              <div class="flex items-center justify-between">
-                <h4 class="text-sm text-gray-500">Montant investi</h4>
-                <i class="fas fa-coins text-indigo-400"></i>
-              </div>
-              <p class="text-lg font-semibold mt-1">${investment.price.toLocaleString()} FCFA</p>
-            </div>
-            
-            <div class="stat-card p-4">
-              <div class="flex items-center justify-between">
-                <h4 class="text-sm text-gray-500">Revenus/jour</h4>
-                <i class="fas fa-chart-line text-green-400"></i>
-              </div>
-              <p class="text-lg font-semibold text-green-600 mt-1">+${investment.dailyRevenue.toLocaleString()} FCFA</p>
-            </div>
-            
-            <div class="stat-card p-4">
-              <div class="flex items-center justify-between">
-                <h4 class="text-sm text-gray-500">Total gagné</h4>
-                <i class="fas fa-piggy-bank text-green-400"></i>
-              </div>
-              <p class="text-lg font-semibold text-green-600 mt-1">+${totalEarned.toLocaleString()} FCFA</p>
-            </div>
-            
-            <div class="stat-card p-4">
-              <div class="flex items-center justify-between">
-                <h4 class="text-sm text-gray-500">Jours restants</h4>
-                <i class="fas fa-hourglass-half text-indigo-400"></i>
-              </div>
-              <p class="text-lg font-semibold mt-1">${remainingDays} jour${remainingDays > 1 ? 's' : ''}</p>
-            </div>
-          </div>
-
-          <div class="relative pt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-2">
-              <span>Progression</span>
-              <span>${Math.round(progress)}%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: ${progress}%"></div>
-            </div>
-          </div>
-        `;
-        
-        container.appendChild(card);
-      });
-
-      document.getElementById('userBalance').innerHTML = `
-        ${userData.balance?.toLocaleString() || 0} FCFA
-      `;
     }
 
-    async function checkAndCreditRevenue(userId, userData) {
-      try {
-        const now = Date.now();
-        let totalRevenue = 0;
-        const updates = {};
-        let revenuesCredited = false;
+    async function creditDailyRevenue(userId, userData) {
+        try {
+            const now = Date.now();
+            const updates = {};
+            let totalRevenueCredited = 0;
 
-        if (userData.investments) {
-          for (const [productId, investment] of Object.entries(userData.investments)) {
-            const hoursSinceLastRevenue = (now - investment.lastRevenueDate) / (1000 * 60 * 60);
-            
-            if (hoursSinceLastRevenue >= 24) {
-              const daysPassed = Math.floor((now - investment.startDate) / (1000 * 60 * 60 * 24));
-              
-              if (daysPassed <= investment.totalDays) {
-                const daysToCredit = Math.floor(hoursSinceLastRevenue / 24);
-                const revenueToAdd = investment.dailyRevenue * daysToCredit * investment.count;
+            if (!userData.investments) return;
+
+            for (const [productId, investment] of Object.entries(userData.investments)) {
+                // Calculer les jours écoulés depuis le début de l'investissement
+                const daysPassed = Math.floor((now - investment.startDate) / (1000 * 60 * 60 * 24));
                 
-                totalRevenue += revenueToAdd;
-                
-                const newLastRevenueDate = investment.lastRevenueDate + (daysToCredit * 24 * 60 * 60 * 1000);
-                updates[`users/${userId}/investments/${productId}/lastRevenueDate`] = newLastRevenueDate;
-                revenuesCredited = true;
-              }
+                // Vérifier si l'investissement est toujours actif
+                if (daysPassed < investment.totalDays) {
+                    // Calculer combien de jours de revenus n'ont pas été crédités
+                    const lastRevenueDate = investment.lastRevenueDate || investment.startDate;
+                    const daysSinceLastRevenue = Math.floor((now - lastRevenueDate) / (1000 * 60 * 60 * 24));
+
+                    // Ne créditer que si au moins un jour s'est écoulé
+                    if (daysSinceLastRevenue >= 1) {
+                        const revenueToAdd = investment.dailyRevenue * investment.count * daysSinceLastRevenue;
+                        
+                        // Mettre à jour le solde total
+                        totalRevenueCredited += revenueToAdd;
+
+                        // Mettre à jour la date du dernier revenu
+                        updates[`users/${userId}/investments/${productId}/lastRevenueDate`] = now;
+                    }
+                }
             }
-          }
-        }
 
-        if (totalRevenue > 0) {
-          const newBalance = (userData.balance || 0) + totalRevenue;
-          updates[`users/${userId}/balance`] = newBalance;
-          
-          await update(ref(database), updates);
-          
-          showNotification(`+${totalRevenue.toLocaleString()} FCFA de revenus crédités !`, false);
-          updateLastUpdateTime();
-        } else if (revenuesCredited) {
-          await update(ref(database), updates);
-          updateLastUpdateTime();
+            // Si des revenus sont à créditer
+            if (totalRevenueCredited > 0) {
+                // Mettre à jour le solde
+                const newBalance = (userData.balance || 0) + totalRevenueCredited;
+                updates[`users/${userId}/balance`] = newBalance;
+
+                // Appliquer les mises à jour
+                await update(ref(database), updates);
+
+                // Notification
+                showNotification(`+${totalRevenueCredited.toLocaleString()} FCFA de revenus crédités !`, false);
+                updateLastUpdateTime();
+            }
+        } catch (error) {
+            console.error("Erreur lors du crédit des revenus:", error);
+            showNotification("Erreur lors du crédit des revenus", true);
         }
-      } catch (error) {
-        console.error("Erreur lors du crédit des revenus:", error);
-        showNotification("Erreur lors du crédit des revenus", true);
-      }
     }
 
     // Gestion de l'authentification
     onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        showLoading(true);
-        
-        // Écouter les changements dans les données utilisateur
-        const userRef = ref(database, `users/${user.uid}`);
-        onValue(userRef, (snapshot) => {
-          const userData = snapshot.val() || {};
-          
-          // Mettre à jour l'interface
-          updateUserInterface(userData);
-          
-          // Vérifier et créditer les revenus
-          checkAndCreditRevenue(user.uid, userData);
-          
-          showLoading(false);
-        }, (error) => {
-          console.error("Erreur lors du chargement des données:", error);
-          showNotification("Erreur lors du chargement des données", true);
-          showLoading(false);
-        });
+        if (user) {
+            currentUser = user;
+            showLoading(true);
+            
+            // Référence aux données utilisateur
+            const userRef = ref(database, `users/${user.uid}`);
+            
+            // Écoute en temps réel des données utilisateur
+            onValue(userRef, (snapshot) => {
+                const userData = snapshot.val() || {};
+                
+                // Mettre à jour l'interface
+                updateUserInterface(userData);
+                
+                // Créditer les revenus
+                creditDailyRevenue(user.uid, userData);
+                
+                showLoading(false);
+            }, (error) => {
+                console.error("Erreur lors du chargement des données:", error);
+                showNotification("Erreur lors du chargement des données", true);
+                showLoading(false);
+            });
 
-        // Configurer la vérification périodique des revenus
-        if (checkRevenueInterval) {
-          clearInterval(checkRevenueInterval);
+            // Configurer une vérification périodique des revenus
+            if (revenueCheckInterval) {
+                clearInterval(revenueCheckInterval);
+            }
+            revenueCheckInterval = setInterval(() => {
+                const userRef = ref(database, `users/${user.uid}`);
+                onValue(userRef, (snapshot) => {
+                    const userData = snapshot.val() || {};
+                    creditDailyRevenue(user.uid, userData);
+                }, { onlyOnce: true });
+            }, 60 * 1000); // Vérifier toutes les minutes
+        } else {
+            currentUser = null;
+            if (revenueCheckInterval) {
+                clearInterval(revenueCheckInterval);
+            }
+            showNotification("Veuillez vous connecter pour voir vos investissements", true);
+            updateUserInterface(null);
         }
-        checkRevenueInterval = setInterval(() => {
-          const userRef = ref(database, `users/${user.uid}`);
-          onValue(userRef, (snapshot) => {
-            const userData = snapshot.val() || {};
-            checkAndCreditRevenue(user.uid, userData);
-          }, { onlyOnce: true });
-        }, 5 * 60 * 1000); // Vérifier toutes les 5 minutes
-      } else {
-        currentUser = null;
-        if (checkRevenueInterval) {
-          clearInterval(checkRevenueInterval);
-        }
-        showNotification("Veuillez vous connecter pour voir vos investissements", true);
-        updateUserInterface(null);
-      }
     });
 
     // Nettoyer l'intervalle quand la page est fermée
     window.addEventListener('beforeunload', () => {
-      if (checkRevenueInterval) {
-        clearInterval(checkRevenueInterval);
-      }
+        if (revenueCheckInterval) {
+            clearInterval(revenueCheckInterval);
+        }
     });
-  </script>
+</script>
 </body>
 </html>

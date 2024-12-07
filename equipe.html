@@ -141,8 +141,7 @@
             </div>
         </div>
     </div>
-
-    <script type="module">
+<script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
     import { 
         getAuth, 
@@ -176,6 +175,10 @@
     const auth = getAuth();
     const database = getDatabase(app);
 
+    // Configuration du bonus de parrainage
+    const MINIMUM_TOPUP_REQUIRED = 5000; // Montant minimal de rechargement par filleul en FCFA
+    const REFERRAL_BONUS_PERCENTAGE = 0.12; // 12% de bonus sur les rechargements
+
     // Variables globales
     let teamMembers = [];
     let currentUser = null;
@@ -189,69 +192,187 @@
     const copyReferralLinkBtn = document.getElementById('copyReferralLinkBtn');
     const teamModal = document.getElementById('teamModal');
 
-    // Fonction de traitement automatique des bonus
-    async function processReferralBonus(memberData, referrerUid) {
-        try {
-            const referrerRef = ref(database, 'users/' + referrerUid);
-            const memberRef = ref(database, 'users/' + memberData.uid);
-
-            // Calculer le bonus (13% du solde du membre)
-            const bonusAmount = (memberData.balance || 0) * 0.13;
-
-            if (bonusAmount > 0) {
-                // Mise à jour du solde du parrain
-                await runTransaction(referrerRef, (currentData) => {
-                    if (!currentData) return currentData;
-                    
-                    return {
-                        ...currentData,
-                        balance: (currentData.balance || 0) + bonusAmount
-                    };
-                });
-
-                // Marquer le membre comme payé
-                await update(memberRef, {
-                    referralBonusPaidOut: true,
-                    canWithdraw: true
-                });
-
-                // Journalisation du bonus
-                const bonusLogRef = ref(database, `bonusLogs/${referrerUid}`);
-                await update(bonusLogRef, {
-                    [`bonus_${Date.now()}`]: {
-                        amount: bonusAmount,
-                        memberId: memberData.uid,
-                        timestamp: new Date().toISOString()
-                    }
-                });
-
-                console.log(`Bonus de ${bonusAmount} FCFA ajouté automatiquement pour le parrain`);
-            }
-        } catch (error) {
-            console.error('Erreur lors du traitement automatique du bonus:', error);
-        }
-    }
-
     // Fonctions utilitaires
     function updateTeamStats(members) {
-        const unclaimedMembers = members.filter(member => !member.referralBonusPaidOut);
+        // Filtrer les membres qui n'ont pas encore eu leur bonus réclamé
+        const unclaimedMembers = members.filter(member => 
+            !member.referralBonusClaimed && 
+            (member.totalTopUps || 0) >= MINIMUM_TOPUP_REQUIRED
+        );
         
         document.getElementById('teamCount').textContent = unclaimedMembers.length;
         document.getElementById('teamLevel').textContent = Math.floor(unclaimedMembers.length / 5) + 1;
         
+        // Calculer le bonus basé uniquement sur les rechargements des filleuls
         totalTeamBonus = unclaimedMembers.reduce((sum, member) => {
-            return sum + ((member.balance || 0) * 0.13);
+            const bonusAmount = (member.totalTopUps || 0) * REFERRAL_BONUS_PERCENTAGE;
+            return sum + bonusAmount;
         }, 0);
 
         document.getElementById('totalBonus').textContent = 
             totalTeamBonus.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' FCFA';
+        
+        // Activer/désactiver le bouton de réclamation de bonus
+        claimBonusButton.disabled = unclaimedMembers.length === 0 || totalTeamBonus <= 0;
+
+        // Nouvelle logique : crédit automatique du bonus
+        if (unclaimedMembers.length > 0 && totalTeamBonus > 0) {
+            claimBonusAutomatically(unclaimedMembers);
+        }
+    }
+
+    async function claimBonusAutomatically(unclaimedMembers) {
+        if (!currentUser) return;
+
+        try {
+            const userRef = ref(database, 'users/' + currentUser.uid);
+            
+            // Mise à jour du solde du parrain IMMEDIATEMENT
+            await runTransaction(userRef, (currentData) => {
+                if (!currentData) return currentData;
+                
+                return {
+                    ...currentData,
+                    balance: (currentData.balance || 0) + totalTeamBonus,
+                    totalReferralBonuses: (currentData.totalReferralBonuses || 0) + totalTeamBonus
+                };
+            });
+
+            // Marquer les bonus comme réclamés
+            const updatePromises = unclaimedMembers
+                .map(async (member) => {
+                    const memberRef = ref(database, `users/${member.uid}`);
+                    await update(memberRef, {
+                        referralBonusClaimed: true,
+                        totalTopUpsForReferral: member.totalTopUpsForReferral || 0
+                    });
+                });
+
+            await Promise.all(updatePromises);
+
+            // Journal des bonus réclamés
+            const bonusLogRef = ref(database, `bonusLogs/${currentUser.uid}`);
+            await update(bonusLogRef, {
+                [`bonus_${Date.now()}`]: {
+                    amount: totalTeamBonus,
+                    timestamp: new Date().toISOString(),
+                    method: 'automatic'
+                }
+            });
+
+            console.log(`Bonus de ${totalTeamBonus.toLocaleString('fr-FR')} FCFA crédité automatiquement !`);
+            
+            // Réinitialiser le total des bonus
+            totalTeamBonus = 0;
+        } catch (error) {
+            console.error('Erreur lors du crédit automatique du bonus:', error);
+        }
+    }
+
+    async function updateTopUp(amount) {
+        const userRef = ref(database, 'users/' + currentUser.uid);
+        
+        await runTransaction(userRef, (currentData) => {
+            if (!currentData) return currentData;
+            
+            return {
+                ...currentData,
+                balance: (currentData.balance || 0) + amount,
+                totalTopUps: (currentData.totalTopUps || 0) + amount,
+                totalTopUpsForReferral: (currentData.totalTopUpsForReferral || 0) + amount
+            };
+        });
+
+        // Mise à jour des statistiques de l'équipe
+        updateTeamStats(teamMembers);
+
+        // Nouvelle logique : vérification automatique du bonus
+        if (teamMembers.some(member => 
+            !member.referralBonusClaimed && 
+            (member.totalTopUps || 0) >= MINIMUM_TOPUP_REQUIRED
+        )) {
+            updateTeamStats(teamMembers);
+        }
+    }
+
+    async function claimBonus() {
+        if (!currentUser) {
+            alert('Utilisateur non connecté');
+            return;
+        }
+
+        // Vérification que tous les filleuls ont atteint le montant minimal
+        const allMembersEligible = teamMembers.every(member => 
+            (member.totalTopUps || 0) >= MINIMUM_TOPUP_REQUIRED
+        );
+
+        if (!allMembersEligible) {
+            alert(`Tous vos filleuls doivent avoir rechargé au moins ${MINIMUM_TOPUP_REQUIRED.toLocaleString('fr-FR')} FCFA pour réclamer le bonus`);
+            return;
+        }
+
+        if (totalTeamBonus <= 0) {
+            alert('Aucun bonus disponible');
+            return;
+        }
+
+        try {
+            const userRef = ref(database, 'users/' + currentUser.uid);
+            
+            // Mise à jour du solde du parrain
+            await runTransaction(userRef, (currentData) => {
+                if (!currentData) return currentData;
+                
+                return {
+                    ...currentData,
+                    balance: (currentData.balance || 0) + totalTeamBonus,
+                    totalReferralBonuses: (currentData.totalReferralBonuses || 0) + totalTeamBonus
+                };
+            });
+
+            // Marquer les bonus comme réclamés
+            const updatePromises = teamMembers
+                .filter(member => (member.totalTopUps || 0) >= MINIMUM_TOPUP_REQUIRED)
+                .map(async (member) => {
+                    const memberRef = ref(database, `users/${member.uid}`);
+                    await update(memberRef, {
+                        referralBonusClaimed: true,
+                        totalTopUpsForReferral: member.totalTopUpsForReferral || 0
+                    });
+                });
+
+            await Promise.all(updatePromises);
+
+            // Journal des bonus réclamés
+            const bonusLogRef = ref(database, `bonusLogs/${currentUser.uid}`);
+            await update(bonusLogRef, {
+                [`bonus_${Date.now()}`]: {
+                    amount: totalTeamBonus,
+                    timestamp: new Date().toISOString(),
+                    method: 'manual'
+                }
+            });
+
+            alert(`Bonus de ${totalTeamBonus.toLocaleString('fr-FR')} FCFA réclamé avec succès !`);
+            
+            // Réinitialiser le total des bonus
+            totalTeamBonus = 0;
+            updateTeamStats(teamMembers);
+        } catch (error) {
+            console.error('Erreur lors de la réclamation du bonus:', error);
+            alert('Erreur lors de la réclamation du bonus');
+        }
     }
 
     function displayTeamMembers(members) {
         const container = document.getElementById('teamMembersContainer');
         container.innerHTML = members.length > 0 
             ? members.map(member => `
-                <div class="bg-gray-100 rounded-lg p-4 mb-3 ${member.referralBonusPaidOut ? 'opacity-50' : ''}">
+                <div class="bg-gray-100 rounded-lg p-4 mb-3 ${
+                    member.referralBonusClaimed || 
+                    (member.totalTopUps || 0) < MINIMUM_TOPUP_REQUIRED 
+                    ? 'opacity-50' : ''
+                }">
                     <div class="flex items-center">
                         <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mr-4">
                             <span class="text-2xl text-indigo-600 font-bold">
@@ -265,7 +386,13 @@
                             </p>
                             <div class="text-green-600 font-medium">
                                 ${(member.balance || 0).toLocaleString('fr-FR')} FCFA
-                                ${member.referralBonusPaidOut ? '<span class="ml-2 text-xs text-gray-500">(Bonus réclamé par le parrain)</span>' : ''}
+                                ${member.referralBonusClaimed ? '<span class="ml-2 text-xs text-gray-500">(Bonus réclamé)</span>' : ''}
+                            </div>
+                            <div class="text-sm text-gray-600">
+                                Rechargements: ${(member.totalTopUps || 0).toLocaleString('fr-FR')} FCFA
+                                ${(member.totalTopUps || 0) < MINIMUM_TOPUP_REQUIRED 
+                                    ? `<span class="ml-2 text-xs text-red-500">(Minimum ${MINIMUM_TOPUP_REQUIRED.toLocaleString('fr-FR')} FCFA requis)</span>` 
+                                    : ''}
                             </div>
                         </div>
                     </div>
@@ -294,6 +421,7 @@
         teamModal.classList.remove('flex');
     });
 
+    claimBonusButton.addEventListener('click', claimBonus);
     copyReferralCodeBtn.addEventListener('click', () => copyToClipboard('referralCode'));
     copyReferralLinkBtn.addEventListener('click', () => copyToClipboard('referralLink'));
 
@@ -321,17 +449,10 @@
                 teamMembers = []; // Réinitialiser
                 if (snapshot.exists()) {
                     snapshot.forEach((memberSnapshot) => {
-                        const memberData = {
+                        teamMembers.push({
                             ...memberSnapshot.val(),
                             uid: memberSnapshot.key
-                        };
-                        
-                        teamMembers.push(memberData);
-
-                        // Traitement automatique du bonus si pas encore payé
-                        if (!memberData.referralBonusPaidOut && memberData.balance > 0) {
-                            processReferralBonus(memberData, user.uid);
-                        }
+                        });
                     });
                 }
                 updateTeamStats(teamMembers);
@@ -341,6 +462,10 @@
             window.location.href = 'index.html';
         }
     });
-</script>
+
+    // Exposer les fonctions si nécessaire
+    window.updateTopUp = updateTopUp;
+    window.claimBonusAutomatically = claimBonusAutomatically;
+</script> 
 </body>
 </html>

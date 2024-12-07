@@ -142,8 +142,7 @@
         </div>
     </div>
 
- <script type="module">
-    // Imports Firebase
+    <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
     import { 
         getAuth, 
@@ -157,6 +156,7 @@
         orderByChild,
         equalTo,
         update,
+        get,
         runTransaction
     } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js';
 
@@ -173,7 +173,7 @@
 
     // Initialisation Firebase
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+    const auth = getAuth();
     const database = getDatabase(app);
 
     // Variables globales
@@ -181,9 +181,10 @@
     let currentUser = null;
     let totalTeamBonus = 0;
 
-    // Récupération des éléments DOM
+    // Gestionnaires d'événements
     const showTeamButton = document.getElementById('showTeamButton');
     const closeTeamModalBtn = document.getElementById('closeTeamModalBtn');
+    const claimBonusButton = document.getElementById('claimBonusButton');
     const copyReferralCodeBtn = document.getElementById('copyReferralCodeBtn');
     const copyReferralLinkBtn = document.getElementById('copyReferralLinkBtn');
     const teamModal = document.getElementById('teamModal');
@@ -197,8 +198,8 @@
             // Calculer le bonus (13% du solde du membre)
             const bonusAmount = (memberData.balance || 0) * 0.13;
 
-            if (bonusAmount > 0 && !memberData.referralBonusPaidOut) {
-                // Transaction pour mettre à jour le solde du parrain
+            if (bonusAmount > 0) {
+                // Mise à jour du solde du parrain
                 await runTransaction(referrerRef, (currentData) => {
                     if (!currentData) return currentData;
                     
@@ -225,10 +226,6 @@
                 });
 
                 console.log(`Bonus de ${bonusAmount} FCFA ajouté automatiquement pour le parrain`);
-
-                // Mise à jour des statistiques de l'équipe
-                updateTeamStats(teamMembers);
-                displayTeamMembers(teamMembers);
             }
         } catch (error) {
             console.error('Erreur lors du traitement automatique du bonus:', error);
@@ -286,102 +283,64 @@
         });
     }
 
-    // Configuration des événements
-    function setupEventListeners() {
-        if (showTeamButton) {
-            showTeamButton.addEventListener('click', () => {
-                teamModal.classList.remove('hidden');
-                teamModal.classList.add('flex');
-            });
-        }
+    // Événements
+    showTeamButton.addEventListener('click', () => {
+        teamModal.classList.remove('hidden');
+        teamModal.classList.add('flex');
+    });
 
-        if (closeTeamModalBtn) {
-            closeTeamModalBtn.addEventListener('click', () => {
-                teamModal.classList.add('hidden');
-                teamModal.classList.remove('flex');
-            });
-        }
+    closeTeamModalBtn.addEventListener('click', () => {
+        teamModal.classList.add('hidden');
+        teamModal.classList.remove('flex');
+    });
 
-        if (copyReferralCodeBtn) {
-            copyReferralCodeBtn.addEventListener('click', () => copyToClipboard('referralCode'));
-        }
-
-        if (copyReferralLinkBtn) {
-            copyReferralLinkBtn.addEventListener('click', () => copyToClipboard('referralLink'));
-        }
-    }
+    copyReferralCodeBtn.addEventListener('click', () => copyToClipboard('referralCode'));
+    copyReferralLinkBtn.addEventListener('click', () => copyToClipboard('referralLink'));
 
     // Authentification et chargement des données
-    function initializeUserData() {
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                const userRef = ref(database, 'users/' + user.uid);
-                
-                // Écouteur pour les données utilisateur
-                onValue(userRef, (snapshot) => {
-                    const userData = snapshot.val();
-                    if (userData) {
-                        // Mise à jour du code et du lien de parrainage
-                        if (document.getElementById('referralCode')) {
-                            document.getElementById('referralCode').value = userData.referralCode || '';
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            const userRef = ref(database, 'users/' + user.uid);
+            onValue(userRef, (snapshot) => {
+                const userData = snapshot.val();
+                if (userData && userData.referralCode) {
+                    document.getElementById('referralCode').value = userData.referralCode;
+                    document.getElementById('referralLink').value = 
+                        `${window.location.origin}/index.html?ref=${userData.referralCode}`;
+                }
+            });
+
+            const teamQuery = query(
+                ref(database, 'users'),
+                orderByChild('referredBy'),
+                equalTo(user.uid)
+            );
+
+            onValue(teamQuery, (snapshot) => {
+                teamMembers = []; // Réinitialiser
+                if (snapshot.exists()) {
+                    snapshot.forEach((memberSnapshot) => {
+                        const memberData = {
+                            ...memberSnapshot.val(),
+                            uid: memberSnapshot.key
+                        };
+                        
+                        teamMembers.push(memberData);
+
+                        // Traitement automatique du bonus si pas encore payé
+                        if (!memberData.referralBonusPaidOut && memberData.balance > 0) {
+                            processReferralBonus(memberData, user.uid);
                         }
-                        if (document.getElementById('referralLink')) {
-                            document.getElementById('referralLink').value = 
-                                `${window.location.origin}/index.html?ref=${userData.referralCode}`;
-                        }
-
-                        // Traitement automatique du bonus du parrain
-                        if (userData.referredBy && !userData.referralBonusPaidOut) {
-                            const memberData = {
-                                ...userData,
-                                uid: user.uid
-                            };
-                            
-                            processReferralBonus(memberData, userData.referredBy);
-                        }
-                    }
-                });
-
-                // Requête pour récupérer les membres de l'équipe
-                const teamQuery = query(
-                    ref(database, 'users'),
-                    orderByChild('referredBy'),
-                    equalTo(user.uid)
-                );
-
-                onValue(teamQuery, (snapshot) => {
-                    teamMembers = []; // Réinitialiser
-                    if (snapshot.exists()) {
-                        snapshot.forEach((memberSnapshot) => {
-                            const memberData = {
-                                ...memberSnapshot.val(),
-                                uid: memberSnapshot.key
-                            };
-                            
-                            teamMembers.push(memberData);
-                        });
-                    }
-                    updateTeamStats(teamMembers);
-                    displayTeamMembers(teamMembers);
-                });
-            } else {
-                // Redirection si non authentifié
-                window.location.href = 'index.html';
-            }
-        }, (error) => {
-            console.error("Erreur d'authentification :", error);
-        });
-    }
-
-    // Initialisation de l'application
-    function init() {
-        setupEventListeners();
-        initializeUserData();
-    }
-
-    // Démarrage de l'application
-    init();
+                    });
+                }
+                updateTeamStats(teamMembers);
+                displayTeamMembers(teamMembers);
+            });
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
 </script>
 </body>
 </html>
